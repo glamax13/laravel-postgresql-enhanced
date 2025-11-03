@@ -47,6 +47,26 @@ class WhereTest extends TestCase
         );
     }
 
+    public function testOrWhereAnySub(): void
+    {
+        $this->getConnection()->unprepared('CREATE TABLE reference (id bigint, name text)');
+        $this->getConnection()->unprepared('CREATE TABLE example (val text, reference_id bigint)');
+
+        $queries = $this->withQueryLog(function (): void {
+            $this->getConnection()->table('example')
+            ->whereRaw('true = false')
+            ->orWhereAnySub(
+                'reference_id',
+                '=',
+                $this->getConnection()->table('reference')->select('id')
+            )->get();
+        });
+        $this->assertEquals(
+            ['select * from "example" where true = false or "reference_id" = any(array(select "id" from "reference"))'],
+            array_column($queries, 'query'),
+        );
+    }
+
     public function testOrWhereBetweenSymmetric(): void
     {
         $this->getConnection()->unprepared('CREATE TABLE example (val int)');
@@ -142,6 +162,26 @@ class WhereTest extends TestCase
         );
     }
 
+    public function testOrWhereNotAnySub(): void
+    {
+        $this->getConnection()->unprepared('CREATE TABLE reference (id bigint, name text)');
+        $this->getConnection()->unprepared('CREATE TABLE example (val text, reference_id bigint)');
+
+        $queries = $this->withQueryLog(function (): void {
+            $this->getConnection()->table('example')
+            ->whereRaw('true = false')
+            ->orWhereNotAnySub(
+                'reference_id',
+                '=',
+                $this->getConnection()->table('reference')->select('id')
+            )->get();
+        });
+        $this->assertEquals(
+            ['select * from "example" where true = false or "reference_id" = any(array(select "id" from "reference")) is not true'],
+            array_column($queries, 'query'),
+        );
+    }
+
     public function testOrWhereNotBetweenSymmetric(): void
     {
         $this->getConnection()->unprepared('CREATE TABLE example (val int)');
@@ -221,6 +261,25 @@ class WhereTest extends TestCase
         $this->assertEquals(
             [['%test157552%', '%test419109%']],
             array_column($queries, 'bindings'),
+        );
+    }
+
+    public function testWhereAnySub(): void
+    {
+        $this->getConnection()->unprepared('CREATE TABLE reference (id bigint, name text)');
+        $this->getConnection()->unprepared('CREATE TABLE example (val text, reference_id bigint)');
+
+        $queries = $this->withQueryLog(function (): void {
+            $this->getConnection()->table('example')
+            ->whereAnySub(
+                'reference_id',
+                '=',
+                $this->getConnection()->table('reference')->select('id')
+            )->get();
+        });
+        $this->assertEquals(
+            ['select * from "example" where "reference_id" = any(array(select "id" from "reference"))'],
+            array_column($queries, 'query'),
         );
     }
 
@@ -316,6 +375,25 @@ class WhereTest extends TestCase
         $this->assertEquals(
             [['%test299285%', '%test449782%']],
             array_column($queries, 'bindings'),
+        );
+    }
+
+    public function testWhereNotAnySub(): void
+    {
+        $this->getConnection()->unprepared('CREATE TABLE reference (id bigint, name text)');
+        $this->getConnection()->unprepared('CREATE TABLE example (val text, reference_id bigint)');
+
+        $queries = $this->withQueryLog(function (): void {
+            $this->getConnection()->table('example')
+            ->whereNotAnySub(
+                'reference_id',
+                '=',
+                $this->getConnection()->table('reference')->select('id')
+            )->get();
+        });
+        $this->assertEquals(
+            ['select * from "example" where "reference_id" = any(array(select "id" from "reference")) is not true'],
+            array_column($queries, 'query'),
         );
     }
 

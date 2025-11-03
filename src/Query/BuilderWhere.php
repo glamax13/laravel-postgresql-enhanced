@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tpetry\PostgresqlEnhanced\Query;
 
 use Illuminate\Database\Query\Expression;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 trait BuilderWhere
 {
@@ -26,6 +27,16 @@ trait BuilderWhere
     public function orWhereAnyValue($column, string $operator, iterable $values): static
     {
         return $this->whereAnyValue($column, $operator, $values, boolean: 'or');
+    }
+
+    /**
+     * Add an or where any subquery statement to the query.
+     *
+     * @param Expression|string $column
+     */
+    public function orWhereAnySub($column, string $operator, $callback): static
+    {
+        return $this->whereAnySub($column, $operator, $callback, boolean: 'or');
     }
 
     /**
@@ -91,6 +102,16 @@ trait BuilderWhere
     }
 
     /**
+     * Add an or where not any subquery statement to the query.
+     *
+     * @param Expression|string $column
+     */
+    public function orWhereNotAnySub($column, string $operator, $callback): static
+    {
+        return $this->whereAnySub($column, $operator, $callback, boolean: 'or', not: true);
+    }
+
+    /**
      * Add an or where not between symmetric statement to the query.
      *
      * @param Expression|string $column
@@ -150,6 +171,31 @@ trait BuilderWhere
 
         $this->wheres[] = compact('type', 'column', 'operator', 'values', 'boolean', 'not');
         $this->addBinding($this->cleanBindings(collect($values)->toArray()), 'where');
+
+        return $this;
+    }
+
+    /**
+     * Add a where any subquery statement to the query.
+     *
+     * @param Expression|string $column
+     * @param 'and'|'or' $boolean
+     */
+    public function whereAnySub($column, string $operator, $callback, string $boolean = 'and', bool $not = false): static
+    {
+        $type = 'AnySub';
+
+        if ($callback instanceof \Closure) {
+            // Once we have the query instance we can simply execute it so it can add all
+            // of the sub-select's conditions to itself, and then we can cache it off
+            // in the array of where clauses for the "main" parent query instance.
+            $callback($query = $this->forSubQuery());
+        } else {
+            $query = $callback instanceof EloquentBuilder ? $callback->toBase() : $callback;
+        }
+
+        $this->wheres[] = compact('type', 'column', 'operator', 'query', 'boolean', 'not');
+        $this->addBinding($query->getBindings(), 'where');
 
         return $this;
     }
@@ -226,6 +272,16 @@ trait BuilderWhere
     public function whereNotAnyValue($column, string $operator, iterable $values): static
     {
         return $this->whereAnyValue($column, $operator, $values, not: true);
+    }
+
+    /**
+     * Add a where not any subquery statement to the query.
+     *
+     * @param Expression|string $column
+     */
+    public function whereNotAnySub($column, string $operator, $callback): static
+    {
+        return $this->whereAnySub($column, $operator, $callback, not: true);
     }
 
     /**

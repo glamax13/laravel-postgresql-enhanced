@@ -44,6 +44,24 @@ trait GrammarWhere
     }
 
     /**
+     * Compile an "any" clause.
+     *
+     * @param array{column: string, not: bool, operator: string, query: callback|Builder} $where
+     */
+    public function whereAnySub(Builder $query, $where): string
+    {
+        if (!\in_array($where['operator'], [...$this->operators, '??'], strict: true)) {
+            throw new Exception("Invalid operator '{$where['operator']}' used.");
+        }
+
+        return match ($where['not']) {
+            // To take into account null values
+            true => "{$this->wrap($where['column'])} {$where['operator']} any(array({$this->compileSelect($where['query'])})) is not true",
+            false => "{$this->wrap($where['column'])} {$where['operator']} any(array({$this->compileSelect($where['query'])}))",
+        };
+    }
+
+    /**
      * Compile a "like" clause.
      *
      * @param array{caseSensitive: bool, column: string, not: bool, value: mixed} $where
